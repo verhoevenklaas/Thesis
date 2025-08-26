@@ -1,0 +1,553 @@
++prog template urs:10.5
+head  define variables
+$ Bridge geometry variables
+        sto#L 50 $[m] length
+        sto#W 12 $[m] width (min 12)
+        sto#WC 2 $ [m] width curbstone, note W-2*WC has to be larger than 6m to allow for 2 lanes
+        sto#pos 0.5 $ [0..0.99] position of the girders, 0 = both girders in the center, 1 = girders at the edges
+        sto#NCB 5 $ [m] Number of cross beams
+
+$ Materials parameters
+        sto#STEELCLASS 355 $ steel class
+        sto#CONCCLASS 40 $Concrete strength
+
+$ Cross section variables
+        $properties steel parts
+        sto#Hw 2800  $ [mm] heigth web
+        sto#tw 18  $ [mm] thickness web
+        sto#Bf 1500  $ [mm] width flange
+        sto#tf 50  $ [mm] thicknes flang
+$ Propertiesof the concrete slab
+        Sto#tc 300  $ [mm] thickness concrete slab
+$ Load values
+        sto#RF 2.5 $ [kN/m^2] weight of the road finishing material
+        sto#RAI 12 $ [kN/m] weight of the railings
+
+
+$dependant variables (not for editing)
+        sto#bc #w*1000/2 $ [mm] width concrete slab
+        $usefull points
+        sto#ytf #tc+25/2 $y coordinate of top flange steel part
+        sto#ybf #tc+25+#Hw+#tf/2  $y coordinate of bottom flange steel part
+        sto#Steelcounter 1 $default material is steel for t<=40
+        if (#tf>40)
+            sto#Steelcounter 6 $to apply steel of 40<t<80
+        endif
+
+end
+
+ +prog Aqua urs:10.1
+head
+!*!Label  Norm
+NORM DC EN 199x-200x
+
+!*!Label materials
+stee 1 s #STEELCLASS   Titl "=Structural steel" $tmax 80
+stee 2 s #STEELCLASS   Titl "=shear connection" $tmax 80
+stee 3 B '500B' Tmax 32 titl "=reinforcement"
+conc 4 C #CONCCLASS typr B titl "=concrete cross section"
+conc 5 C  gam 0 typr B titl "=concrete slab (no mass)"
+stee 6 s #STEELCLASS   Titl "=Structural steel" tmax 80
+
+
+!*!Label  cross sections
+
+$$Variables
+
+$        $properties steel parts
+$        Sto#Hw 2800  $heigth web
+$        sto#tw 18  $thickness web
+$        sto#Bf 1000  $width flange
+$        Sto#tf 40  $thicknes flange
+$        $properties concrete parts
+$        Sto#tc 307  $thickness concrete slab
+$        sto#bc 6000 $width concrete slab
+$        $usefull points
+$        sto#ytf #tc+#tf/2 $y coordinate of top flange steel part
+$        sto#ybf #tc+#tf+#Hw+#tf/2  $y coordinate of bottom flange steel part
+
+$Create the right beam
+SECT 1 MNO 1 MRF 3  BTYP BEAM TITL "Cross Section Span right"
+SV   IT 0.500000[o/o]
+LAY  0 TYPE  MIN MRF 3
+$create layers for later use in reinforcement
+LAY  1 'BOT' TYPE  MIN MRF 3
+LAY  2 'TOP' TYPE  MIN MRF 3
+SPT  '7200' Y 0 Z #ytf-#tf/2 MNO 1
+$steel parts
+PLAT 'FUL' YB -350/2 ZB #ytf YE 0 ZE #ytf T 25 MNO 1 FIXB  OFF FIXE  OFF
+PLAT 'FUR' YB 0 ZB #ytf YE 350/2 ZE #ytf T 25 MNO 1 FIXB  OFF FIXE  OFF
+PLAT 'WEB' YB 0 ZB #ytf YE  0 ZE #ybf T #tw MNO 1
+PLAT 'FBL' YB -#bf/2 ZB #ybf YE 0 ZE #ybf T #tf MNO #Steelcounter
+PLAT 'FBR' YB 0 ZB #ybf YE #bf/2 ZE #ybf T #tf MNO #Steelcounter
+SPT  'SBOT' Y  0 Z #ybf+#tf/2 MNO #Steelcounter FIX FREE
+SPT  'STOP' Y 0 Z #ytf-25/2 SIGC 80 MNO 1 FIX FREE
+SPT  'WT' Y  0 Z #ytf+25/2 MNO 1 FIX FREE
+SPT  'WB' Y 0 Z #ybf-#tf/2 MNO 1 FIX FREE
+$concrete parts
+PLAT 'CR' YB 0 ZB #tc/2 YE #bc*(1-#pos) ZE #tc/2 T #tc MNO 4
+PLAT 'CL' YB -#bc*#pos ZB #tc/2 YE 0 ZE #tc/2 T #tc MNO 4
+SPT  'CTOP' Y 0 Z 0 MNO 4 FIX FREE
+$reinforcement
+LRF  '1000' YB -#bc/2+50 ZB 30 YE #bc/2-50 ZE 30 AS 15.47000[cm2/m] LAY   M2 TORS PASS D 16 A 130 DIST EVEN
+LRF  '1300' YB -#bc/2+50 ZB #tc-30 YE #bc/2-50 ZE #tc-30 AS 15.47000[cm2/m] LAY   M1 TORS PASS D 16 A 130 DIST EVEN
+WELD '0900' YB 0 ZB #tc/2 YE 0 ZE #ytf T -20 MNO 2
+
+$Create the left beam
+SECT 2 MNO 1 MRF 3  BTYP BEAM TITL "Cross Section Span left"
+SV   IT 0.500000[o/o]
+LAY  0 TYPE  MIN MRF 3
+$create layers for later use in reinforcement
+LAY  1 'BOT' TYPE  MIN MRF 3
+LAY  2 'TOP' TYPE  MIN MRF 3
+SPT  '7200' Y 0 Z #ytf-#tf/2 MNO 1
+$steel parts
+PLAT 'FUL' YB -350/2 ZB #ytf YE 0 ZE #ytf T 25 MNO 1 FIXB  OFF FIXE  OFF
+PLAT 'FUR' YB 0 ZB #ytf YE 350/2 ZE #ytf T 25 MNO 1 FIXB  OFF FIXE  OFF
+PLAT 'WEB' YB 0 ZB #ytf YE  0 ZE #ybf T #tw MNO 1
+PLAT 'FBL' YB -#bf/2 ZB #ybf YE 0 ZE #ybf T #tf MNO #Steelcounter
+PLAT 'FBR' YB 0 ZB #ybf YE #bf/2 ZE #ybf T #tf MNO #Steelcounter
+SPT  'SBOT' Y  0 Z #ybf+#tf/2 MNO #Steelcounter FIX FREE
+SPT  'STOP' Y 0 Z #ytf-25/2 SIGC 80 MNO 1 FIX FREE
+SPT  'WT' Y  0 Z #ytf+25/2 MNO 1 FIX FREE
+SPT  'WB' Y 0 Z #ybf-#tf/2 MNO 1 FIX FREE
+$concrete parts
+PLAT 'CR' YB 0 ZB #tc/2 YE #bc*#pos ZE #tc/2 T #tc MNO 4
+PLAT 'CL' YB -#bc*(1-#pos) ZB #tc/2 YE 0 ZE #tc/2 T #tc MNO 4
+SPT  'CTOP' Y 0 Z 0 MNO 4 FIX FREE
+$reinforcement
+LRF  '1000' YB -#bc/2+50 ZB 30 YE #bc/2-50 ZE 30 AS 15.47000[cm2/m] LAY   M2 TORS PASS D 16 A 130 DIST EVEN
+LRF  '1300' YB -#bc/2+50 ZB #tc-30 YE #bc/2-50 ZE #tc-30 AS 15.47000[cm2/m] LAY   M1 TORS PASS D 16 A 130 DIST EVEN
+WELD '0900' YB 0 ZB #tc/2 YE 0 ZE #ytf T -20 MNO 2
+
+$create cross beams
+CTRL
+CTRL PLAS 0
+SECT 3 MNO 1 MRF 0 BTYP CENT BCY 'A' BCZ 'B' TITL "Cross beam - regular"
+PROF TYPE 'IPE' Z1 600 MNO 1 ALPH 0 YM 0 ZM #tc+#Hw/4 DTYP    T REF   Z-
+CTRL
+CTRL PLAS 0
+SECT 4 MNO 1 MRF 0 BTYP CENT BCY 'A' BCZ 'B' TITL "Cross beam - supports"
+PROF TYPE 'HEB' Z1 1000 MNO 1 ALPH 0 YM 0 ZM #tc+#Hw/4 DTYP    T REF   Z- VD 1500[mm] VB 300[mm] VS 30[mm] VT 40[mm] VR1 30[mm] VR2 0[mm] VB2 300[mm] VT2 40[mm]
+
+$Create dummy beam to read out properties steel section
+SECT 5 MNO 1 MRF 3  BTYP BEAM TITL "Cross Section Span right"
+SV   IT 0.500000[o/o]
+
+SPT  '7200' Y 0 Z #ytf-#tf/2 MNO 1
+$steel parts
+PLAT 'FUL' YB -350/2 ZB #ytf YE 0 ZE #ytf T 25 MNO 1 FIXB  OFF FIXE  OFF
+PLAT 'FUR' YB 0 ZB #ytf YE 350/2 ZE #ytf T 25 MNO 1 FIXB  OFF FIXE  OFF
+PLAT 'WEB' YB 0 ZB #ytf YE  0 ZE #ybf T #tw MNO 1
+PLAT 'FBL' YB -#bf/2 ZB #ybf YE 0 ZE #ybf T #tf MNO #Steelcounter
+PLAT 'FBR' YB 0 ZB #ybf YE #bf/2 ZE #ybf T #tf MNO #Steelcounter
+SPT  'SBOT' Y  0 Z #ybf+#tf/2 MNO #Steelcounter FIX FREE
+SPT  'STOP' Y 0 Z #ytf-25/2 SIGC 80 MNO 1 FIX FREE
+SPT  'WT' Y  0 Z #ytf+25/2 MNO 1 FIX FREE
+SPT  'WB' Y 0 Z #ybf-#tf/2 MNO 1 FIX FREE
+
+end
+
++prog sofimshc urs:10.2
+head
+syst 3d gdiv 10000
+ctrl opt mesh 1
+ctrl opt hmin 0.5
+!*!Label  create axisses and placements
+$$variables
+$sto#L 30 $[m] length
+$sto#W 12 $[m] width
+$sto#pos 0.5 $ [0..1] position of the girders, 0 = both girders in the center, 1 = girders at the edges
+$sto#NCB 5 $ [m] Number of cross beams
+
+GAX  'MAIN' TYPC AXIS TITL "MAIN"
+GAXA S       0.0 X       0.0       0.0 SX   1.00000       0.0
+GAXA L   #L R       0.0
+
+GAXS 'MAIN' IDS    A Y   #pos*#W/2      $beam axis right
+GAXS 'MAIN' IDS    B Y  -#pos*#W/2      $beam axis left
+GAXS 'MAIN' IDS    C Y   #W/2           $bridge edge right
+GAXS 'MAIN' IDS    D Y  -#W/2           $bridge edge left
+
+!*!Label  create points
+$bridgedeck points
+loop#i #NCB
+ spt no 101+#i ref ax nref 'main.A' sx #i*#L/(#NCB-1)
+ spt no 201+#i ref ax nref 'main.B' sx #i*#L/(#NCB-1)
+ spt no 301+#i ref ax nref 'main.C' sx #i*#L/(#NCB-1)
+ spt no 401+#i ref ax nref 'main.D' sx #i*#L/(#NCB-1)
+endloop
+$support points and constraints
+ spt no 1 ref ax nref 'main.A' fix PP sx 0 sz #ybf/1000
+ sptp type ppmm ref 101
+ spt no 11 ref ax nref 'main.A' fix PYPZ sx #L sz #ybf/1000
+ sptp type ppmm ref 100+#NCB
+ spt no 2 ref ax nref 'main.B' fix PXPZ sx 0 sz #ybf/1000
+ sptp type ppmm ref 201
+ spt no 22 ref ax nref 'main.B' fix PZ sx #L sz #ybf/1000
+ sptp type ppmm ref 200+#NCB
+
+
+
+!*!Label  Create beams
+$main beams
+loop#i #NCB-1
+ sln no 101+#i NPA 101+#i NPE 102+#i sno 1
+ sln no 201+#i NPA 201+#i NPE 202+#i sno 1
+endloop
+$middle cross beams
+Loop#i #NCB-2
+ sln no 301+#i styp 'b' NPA 102+#i NPE 202+#i sno 3
+endloop
+$cross beams at supports
+  sln no 401 styp 'b' NPA 101 NPE 201 sno 4
+  sln no 402 styp 'b' NPA 100+#NCB NPE 200+#NCB sno 4
+
+!*!Label create plates
+loop#i #NCB-1
+SAR      1+#i  MNO 5 NX 0 0 -1 NRA 7 QREF BELO DRX 1 0 0 T #tc CB 0 CT 0
+sarb type out na 301+#i ne 302+#i
+sarb type out na 302+#i ne 402+#i
+sarb type out na 402+#i ne 401+#i
+sarb type out na 401+#i ne 301+#i
+endloop
+
+end
+
++prog sofiload urs:10.3
+head loads
+$$ Variable
+$Sto#RF 2.5 $ [kN/m^2] weight of the road finishing material
+$Sto#RAI 10 $ [kN/m] weight of the railings
+!*!Label actions
+act type g
+act type Q
+act type L_U
+act type L_T
+
+!*!Label dead load structure
+lc no 1 type g FACD 1.0
+
+!*!Label additional dead load
+lc no 2 type g titl 'Additional dead load'
+    $ Road finishing
+    loop#i #NCB-1
+    AREA SAR 1+#i type PG #RF
+    endloop
+    $ Railings
+    line auto type pg p1 #RAI 0 #W/2 0 p2 #RAI #L #W/2 0
+    line auto type pg p1 #RAI 0 -#W/2 0 p2 #RAI #L -#W/2 0
+
+!*!Label load model 1 simplified
+$ Simplified LM1, only usable in case of a single span bridge
+$ Calculating the influence line with module ella would take to much calculation time for iteration.
+$ Note that this is an estimation of the most critical load from LM1 so this might not be accurate
+Let#WL 3 $ [m] width lane
+let#WTL #W-2*#WC $ [m] total width driving lanes
+
+let#TS1 300
+let#TS2 200
+let#TS3 100
+
+Let#UDL1 9
+Let#UDL2 2.5
+let#UDL3 2.5
+let#UDLC 2.5
+
+!*!Label max moment
+LC no 11 type L_U titl 'simplified LM1 right alligned, max moment, UDL'
+area auto type pg p1 #UDLC 0 #W/2 0  p2 #UDLC #L #W/2 0 p3 #UDLC #L #WTL/2 0 p4 #UDLC 0 #WTL/2 0 $Curbstone right
+area auto type pg p1 #UDLC 0 -#W/2 0  p2 #UDLC #L -#W/2 0 p3 #UDLC #L -#WTL/2 0 p4 #UDLC 0 -#WTL/2 0 $curbstone left
+
+area auto type pg p1 #UDL1 0 #WTL/2 0  p2 #UDL1 #L #WTL/2 0 p3 #UDL1 #L #WTL/2-#WL 0 p4 #UDL1 0 #WTL/2-#WL 0 $Lane 1 UDL
+area auto type pg p1 #UDL2 0 #WTL/2-#WL 0  p2 #UDL2 #L #WTL/2-#WL 0 p3 #UDL2 #L #WTL/2-2*#WL 0 p4 #UDL2 0 #WTL/2-2*#WL 0 $Lane 2 UDL
+area auto type pg p1 #UDL3 0 #WTL/2-2*#WL 0  p2 #UDL3 #L #WTL/2-2*#WL 0 p3 #UDL3 #L -#WTL/2 0 p4 #UDL3 0 -#WTL/2 0 $rest of lane or residual area UDL
+
+LC no 21 type L_T titl 'simplified LM1 right alligned, max moment, TS'
+$ TS lane 1
+poin auto type pg p #TS1/2 #L/2+0.3 #WTL/2-#WL/2+1 0
+poin auto type pg p #TS1/2 #L/2+0.3 #WTL/2-#WL/2-1 0
+poin auto type pg p #TS1/2 #L/2-0.9 #WTL/2-#WL/2+1 0
+poin auto type pg p #TS1/2 #L/2-0.9 #WTL/2-#WL/2-1 0
+$ TS lane 2
+poin auto type pg p #TS2/2 #L/2+0.3 #WTL/2-#WL-#WL/2+1 0
+poin auto type pg p #TS2/2 #L/2+0.3 #WTL/2-#WL-#WL/2-1 0
+poin auto type pg p #TS2/2 #L/2-0.9 #WTL/2-#WL-#WL/2+1 0
+poin auto type pg p #TS2/2 #L/2-0.9 #WTL/2-#WL-#WL/2-1 0
+
+let#Rest (#WTL-2*#WL) $ area of lanes 3 and upwards
+let#RTS #rest/3 $number of TS in lanes 3 and upwards (round down)
+if #RTS>1
+    loop#i #RTS
+        poin auto type pg p #TS3/2 #L/2+0.3 #WTL/2-(#i+2)*#WL-#WL/2+1 0
+        poin auto type pg p #TS3/2 #L/2+0.3 #WTL/2-(#i+2)*#WL-#WL/2-1 0
+        poin auto type pg p #TS3/2 #L/2-0.9 #WTL/2-(#i+2)*#WL-#WL/2+1 0
+        poin auto type pg p #TS3/2 #L/2-0.9 #WTL/2-(#i+2)*#WL-#WL/2-1 0
+    endloop
+endif
+
+LC no 12 type L_U titl 'simplified LM1 left alligned max moment,UDL'
+area auto type pg p1 #UDLC 0 #W/2 0  p2 #UDLC #L #W/2 0 p3 #UDLC #L #WTL/2 0 p4 #UDLC 0 #WTL/2 0 $Curbstone right
+area auto type pg p1 #UDLC 0 -#W/2 0  p2 #UDLC #L -#W/2 0 p3 #UDLC #L -#WTL/2 0 p4 #UDLC 0 -#WTL/2 0 $curbstone left
+
+area auto type pg p1 #UDL1 0 -#WTL/2 0  p2 #UDL1 #L -#WTL/2 0 p3 #UDL1 #L -#WTL/2+#WL 0 p4 #UDL1 0 -#WTL/2+#WL 0 $Lane 1 UDL
+area auto type pg p1 #UDL2 0 -#WTL/2+#WL 0  p2 #UDL2 #L -#WTL/2+#WL 0 p3 #UDL2 #L -#WTL/2+2*#WL 0 p4 #UDL2 0 -#WTL/2+2*#WL 0 $Lane 2 UDL
+area auto type pg p1 #UDL3 0 -#WTL/2+2*#WL 0  p2 #UDL3 #L -#WTL/2+2*#WL 0 p3 #UDL3 #L #WTL/2 0 p4 #UDL3 0 #WTL/2 0 $rest of lane or residual area UDL
+
+LC no 22 type L_T titl 'simplified LM1 left alligned max moment,TS'
+$ TS lane 1
+poin auto type pg p #TS1/2 #L/2+0.3 -#WTL/2+#WL/2+1 0
+poin auto type pg p #TS1/2 #L/2+0.3 -#WTL/2+#WL/2-1 0
+poin auto type pg p #TS1/2 #L/2-0.9 -#WTL/2+#WL/2+1 0
+poin auto type pg p #TS1/2 #L/2-0.9 -#WTL/2+#WL/2-1 0
+$ TS lane 2
+poin auto type pg p #TS2/2 #L/2+0.3 -#WTL/2+#WL+#WL/2+1 0
+poin auto type pg p #TS2/2 #L/2+0.3 -#WTL/2+#WL+#WL/2-1 0
+poin auto type pg p #TS2/2 #L/2-0.9 -#WTL/2+#WL+#WL/2+1 0
+poin auto type pg p #TS2/2 #L/2-0.9 -#WTL/2+#WL+#WL/2-1 0
+
+let#Rest2 (#WTL-2*#WL) $ area of lanes 3 and upwards
+let#RTS2 #rest2/3 $number of TS in lanes 3 and upwards (round down)
+if #RTS2>1
+    loop#i #RTS2
+        poin auto type pg p #TS3/2 #L/2+0.3 -#WTL/2+(#i+2)*#WL+#WL/2+1 0
+        poin auto type pg p #TS3/2 #L/2+0.3 -#WTL/2+(#i+2)*#WL+#WL/2-1 0
+        poin auto type pg p #TS3/2 #L/2-0.9 -#WTL/2+(#i+2)*#WL+#WL/2+1 0
+        poin auto type pg p #TS3/2 #L/2-0.9 -#WTL/2+(#i+2)*#WL+#WL/2-1 0
+    endloop
+endif
+
+LC no 13 type L_U titl 'simplified LM1 center  alligned max moment,UDL'
+area auto type pg p1 #UDLC 0 #W/2 0  p2 #UDLC #L #W/2 0 p3 #UDLC #L #WTL/2 0 p4 #UDLC 0 #WTL/2 0 $Curbstone right
+area auto type pg p1 #UDLC 0 -#W/2 0  p2 #UDLC #L -#W/2 0 p3 #UDLC #L -#WTL/2 0 p4 #UDLC 0 -#WTL/2 0 $curbstone left
+
+area auto type pg p1 #UDL1 0 -#WL/2 0  p2 #UDL1 #L -#WL/2 0 p3 #UDL1 #L #WL/2 0 p4 #UDL1 0 #WL/2 0 $Lane 1 UDL
+
+if #WTL/2-1.5<3 $check if more lanes can fit
+    area auto type pg p1 #UDL3 0 #WTL/2 0  p2 #UDL3 #L #WTL/2 0 p3 #UDL3 #L #WL/2 0 p4 #UDL3 0 #WL/2 0 $ right side residual area UDL
+    area auto type pg p1 #UDL3 0 -#WTL/2 0  p2 #UDL3 #L -#WTL/2 0 p3 #UDL3 #L -#WL/2 0 p4 #UDL3 0 -#WL/2 0 $left side lane or residual area UDL
+else
+    area auto type pg p1 #UDL2 0 #WL/2+#WL 0  p2 #UDL2 #L #WL/2+#WL 0 p3 #UDL2 #L #WL/2 0 p4 #UDL2 0 #WL/2 0 $ right side lane 2 UDL
+    area auto type pg p1 #UDL3 0 #WL/2+#WL 0  p2 #UDL3 #L #WL/2+#WL 0 p3 #UDL3 #L #WTL/2 0 p4 #UDL3 0 #WTL/2 0 $ right side residual lanes UDL
+    area auto type pg p1 #UDL3 0 -#WL/2 0  p2 #UDL3 #L -#WL/2 0 p3 #UDL3 #L -#WTL/2 0 p4 #UDL3 0 -#WTL/2 0 $left side residual lanes UDL
+endif
+
+LC no 23 type L_T titl 'simplified LM1 center  alligned max moment,TS'
+$ TS lane 1
+poin auto type pg p #TS1/2 #L/2+0.3 1 0
+poin auto type pg p #TS1/2 #L/2+0.3 -1 0
+poin auto type pg p #TS1/2 #L/2-0.9 1 0
+poin auto type pg p #TS1/2 #L/2-0.9 -1 0
+
+if #WTL/2-1.5<3 $check if more lanes can fit
+
+else
+
+    $ TS lane 2
+    poin auto type pg p #TS2/2 #L/2+0.3 #WL/2+#WL/2+1 0
+    poin auto type pg p #TS2/2 #L/2+0.3 #WL/2+#WL/2-1 0
+    poin auto type pg p #TS2/2 #L/2-0.9 #WL/2+#WL/2+1 0
+    poin auto type pg p #TS2/2 #L/2-0.9 #WL/2+#WL/2-1 0
+    $ TS residual lanes right
+    let#Rest3r (#WTL/2-#WL/2-#WL) $ area of lanes 3 and upwards
+    let#RTS3r #rest3r/3 $number of TS in lanes 3 and upwards (round down)
+    if #RTS3r>1
+        loop#i #RTS3r
+            poin auto type pg p #TS3/2 #L/2+0.3 #WL/2+(#i+2)*#WL-#WL/2+1 0
+            poin auto type pg p #TS3/2 #L/2+0.3 #WL/2+(#i+2)*#WL-#WL/2-1 0
+            poin auto type pg p #TS3/2 #L/2-0.9 #WL/2+(#i+2)*#WL-#WL/2+1 0
+            poin auto type pg p #TS3/2 #L/2-0.9 #WL/2+(#i+2)*#WL-#WL/2-1 0
+        endloop
+    endif
+    $ TS residual lanes left
+    let#Rest3l (#WTL/2-#WL/2) $ area of lanes 3 and upwards
+    let#RTS3l #rest3l/3 $number of TS in lanes 3 and upwards (round down)
+    if #RTS3l>1
+        loop#i #RTS3l
+            poin auto type pg p #TS3/2 #L/2+0.3 -#WL/2-(#i+1)*#WL+#WL/2+1 0
+            poin auto type pg p #TS3/2 #L/2+0.3 -#WL/2-(#i+1)*#WL+#WL/2-1 0
+            poin auto type pg p #TS3/2 #L/2-0.9 -#WL/2-(#i+1)*#WL+#WL/2+1 0
+            poin auto type pg p #TS3/2 #L/2-0.9 -#WL/2-(#i+1)*#WL+#WL/2-1 0
+        endloop
+    endif
+endif
+
+
+!*!Label  max shear force
+LC no 14 type L_U titl 'simplified LM1 right alligned, max moment,UDL'
+area auto type pg p1 #UDLC 0 #W/2 0  p2 #UDLC #L #W/2 0 p3 #UDLC #L #WTL/2 0 p4 #UDLC 0 #WTL/2 0 $Curbstone right
+area auto type pg p1 #UDLC 0 -#W/2 0  p2 #UDLC #L -#W/2 0 p3 #UDLC #L -#WTL/2 0 p4 #UDLC 0 -#WTL/2 0 $curbstone left
+
+area auto type pg p1 #UDL1 0 #WTL/2 0  p2 #UDL1 #L #WTL/2 0 p3 #UDL1 #L #WTL/2-#WL 0 p4 #UDL1 0 #WTL/2-#WL 0 $Lane 1 UDL
+area auto type pg p1 #UDL2 0 #WTL/2-#WL 0  p2 #UDL2 #L #WTL/2-#WL 0 p3 #UDL2 #L #WTL/2-2*#WL 0 p4 #UDL2 0 #WTL/2-2*#WL 0 $Lane 2 UDL
+area auto type pg p1 #UDL3 0 #WTL/2-2*#WL 0  p2 #UDL3 #L #WTL/2-2*#WL 0 p3 #UDL3 #L -#WTL/2 0 p4 #UDL3 0 -#WTL/2 0 $rest of lane or residual area UDL
+
+LC no 24 type L_T titl 'simplified LM1 right alligned, max moment,TS'
+
+$ TS lane 1
+poin auto type pg p #TS1/2 1.3 #WTL/2-#WL/2+1 0
+poin auto type pg p #TS1/2 1.3 #WTL/2-#WL/2-1 0
+poin auto type pg p #TS1/2 0.1 #WTL/2-#WL/2+1 0
+poin auto type pg p #TS1/2 0.1 #WTL/2-#WL/2-1 0
+$ TS lane 2
+poin auto type pg p #TS2/2 1.3 #WTL/2-#WL-#WL/2+1 0
+poin auto type pg p #TS2/2 1.3 #WTL/2-#WL-#WL/2-1 0
+poin auto type pg p #TS2/2 0.1 #WTL/2-#WL-#WL/2+1 0
+poin auto type pg p #TS2/2 0.1 #WTL/2-#WL-#WL/2-1 0
+
+let#Rest (#WTL-2*#WL) $ area of lanes 3 and upwards
+let#RTS #rest/3 $number of TS in lanes 3 and upwards (round down)
+if #RTS>1
+    loop#i #RTS
+        poin auto type pg p #TS3/2 1.3 #WTL/2-(#i+2)*#WL-#WL/2+1 0
+        poin auto type pg p #TS3/2 1.3 #WTL/2-(#i+2)*#WL-#WL/2-1 0
+        poin auto type pg p #TS3/2 0.1 #WTL/2-(#i+2)*#WL-#WL/2+1 0
+        poin auto type pg p #TS3/2 0.1 #WTL/2-(#i+2)*#WL-#WL/2-1 0
+    endloop
+endif
+
+LC no 15 type L_U titl 'simplified LM1 left alligned max moment,UDL'
+area auto type pg p1 #UDLC 0 #W/2 0  p2 #UDLC #L #W/2 0 p3 #UDLC #L #WTL/2 0 p4 #UDLC 0 #WTL/2 0 $Curbstone right
+area auto type pg p1 #UDLC 0 -#W/2 0  p2 #UDLC #L -#W/2 0 p3 #UDLC #L -#WTL/2 0 p4 #UDLC 0 -#WTL/2 0 $curbstone left
+
+area auto type pg p1 #UDL1 0 -#WTL/2 0  p2 #UDL1 #L -#WTL/2 0 p3 #UDL1 #L -#WTL/2+#WL 0 p4 #UDL1 0 -#WTL/2+#WL 0 $Lane 1 UDL
+area auto type pg p1 #UDL2 0 -#WTL/2+#WL 0  p2 #UDL2 #L -#WTL/2+#WL 0 p3 #UDL2 #L -#WTL/2+2*#WL 0 p4 #UDL2 0 -#WTL/2+2*#WL 0 $Lane 2 UDL
+area auto type pg p1 #UDL3 0 -#WTL/2+2*#WL 0  p2 #UDL3 #L -#WTL/2+2*#WL 0 p3 #UDL3 #L #WTL/2 0 p4 #UDL3 0 #WTL/2 0 $rest of lane or residual area UDL
+
+LC no 25 type L_T titl 'simplified LM1 left alligned max moment,TS'
+$ TS lane 1
+poin auto type pg p #TS1/2 1.3 -#WTL/2+#WL/2+1 0
+poin auto type pg p #TS1/2 1.3 -#WTL/2+#WL/2-1 0
+poin auto type pg p #TS1/2 0.1 -#WTL/2+#WL/2+1 0
+poin auto type pg p #TS1/2 0.1 -#WTL/2+#WL/2-1 0
+$ TS lane 2
+poin auto type pg p #TS2/2 1.3 -#WTL/2+#WL+#WL/2+1 0
+poin auto type pg p #TS2/2 1.3 -#WTL/2+#WL+#WL/2-1 0
+poin auto type pg p #TS2/2 0.1 -#WTL/2+#WL+#WL/2+1 0
+poin auto type pg p #TS2/2 0.1 -#WTL/2+#WL+#WL/2-1 0
+
+let#Rest2 (#WTL-2*#WL) $ area of lanes 3 and upwards
+let#RTS2 #rest2/3 $number of TS in lanes 3 and upwards (round down)
+if #RTS2>1
+    loop#i #RTS2
+        poin auto type pg p #TS3/2 1.3 -#WTL/2+(#i+2)*#WL+#WL/2+1 0
+        poin auto type pg p #TS3/2 1.3 -#WTL/2+(#i+2)*#WL+#WL/2-1 0
+        poin auto type pg p #TS3/2 0.1 -#WTL/2+(#i+2)*#WL+#WL/2+1 0
+        poin auto type pg p #TS3/2 0.1 -#WTL/2+(#i+2)*#WL+#WL/2-1 0
+    endloop
+endif
+
+LC no 16 type L_U titl 'simplified LM1 center  alligned max moment,UDL'
+area auto type pg p1 #UDLC 0 #W/2 0  p2 #UDLC #L #W/2 0 p3 #UDLC #L #WTL/2 0 p4 #UDLC 0 #WTL/2 0 $Curbstone right
+area auto type pg p1 #UDLC 0 -#W/2 0  p2 #UDLC #L -#W/2 0 p3 #UDLC #L -#WTL/2 0 p4 #UDLC 0 -#WTL/2 0 $curbstone left
+
+area auto type pg p1 #UDL1 0 -#WL/2 0  p2 #UDL1 #L -#WL/2 0 p3 #UDL1 #L #WL/2 0 p4 #UDL1 0 #WL/2 0 $Lane 1 UDL
+
+if #WTL/2-1.5<3 $check if more lanes can fit
+    area auto type pg p1 #UDL3 0 #WTL/2 0  p2 #UDL3 #L #WTL/2 0 p3 #UDL3 #L #WL/2 0 p4 #UDL3 0 #WL/2 0 $ right side residual area UDL
+    area auto type pg p1 #UDL3 0 -#WTL/2 0  p2 #UDL3 #L -#WTL/2 0 p3 #UDL3 #L -#WL/2 0 p4 #UDL3 0 -#WL/2 0 $left side lane or residual area UDL
+else
+    area auto type pg p1 #UDL2 0 #WL/2+#WL 0  p2 #UDL2 #L #WL/2+#WL 0 p3 #UDL2 #L #WL/2 0 p4 #UDL2 0 #WL/2 0 $ right side lane 2 UDL
+    area auto type pg p1 #UDL3 0 #WL/2+#WL 0  p2 #UDL3 #L #WL/2+#WL 0 p3 #UDL3 #L #WTL/2 0 p4 #UDL3 0 #WTL/2 0 $ right side residual lanes UDL
+    area auto type pg p1 #UDL3 0 -#WL/2 0  p2 #UDL3 #L -#WL/2 0 p3 #UDL3 #L -#WTL/2 0 p4 #UDL3 0 -#WTL/2 0 $left side residual lanes UDL
+endif
+
+LC no 26 type L_T titl 'simplified LM1 center  alligned max moment,TS'
+
+$ TS lane 1
+poin auto type pg p #TS1/2 1.3 1 0
+poin auto type pg p #TS1/2 1.3 -1 0
+poin auto type pg p #TS1/2 0.1 1 0
+poin auto type pg p #TS1/2 0.1 -1 0
+
+if #WTL/2-1.5<3 $check if more lanes can fit
+
+else
+
+    $ TS lane 2
+    poin auto type pg p #TS2/2 1.3 #WL/2+#WL/2+1 0
+    poin auto type pg p #TS2/2 1.3 #WL/2+#WL/2-1 0
+    poin auto type pg p #TS2/2 0.1 #WL/2+#WL/2+1 0
+    poin auto type pg p #TS2/2 0.1 #WL/2+#WL/2-1 0
+    $ TS residual lanes right
+    let#Rest3r (#WTL/2-#WL/2-#WL) $ area of lanes 3 and upwards
+    let#RTS3r #rest3r/3 $number of TS in lanes 3 and upwards (round down)
+    if #RTS3r>1
+        loop#i #RTS3r
+            poin auto type pg p #TS3/2 1.3 #WL/2+(#i+2)*#WL-#WL/2+1 0
+            poin auto type pg p #TS3/2 1.3 #WL/2+(#i+2)*#WL-#WL/2-1 0
+            poin auto type pg p #TS3/2 0.1 #WL/2+(#i+2)*#WL-#WL/2+1 0
+            poin auto type pg p #TS3/2 0.1 #WL/2+(#i+2)*#WL-#WL/2-1 0
+        endloop
+    endif
+    $ TS residual lanes left
+    let#Rest3l (#WTL/2-#WL/2) $ area of lanes 3 and upwards
+    let#RTS3l #rest3l/3 $number of TS in lanes 3 and upwards (round down)
+    if #RTS3l>1
+        loop#i #RTS3l
+            poin auto type pg p #TS3/2 1.3 -#WL/2-(#i+1)*#WL+#WL/2+1 0
+            poin auto type pg p #TS3/2 1.3 -#WL/2-(#i+1)*#WL+#WL/2-1 0
+            poin auto type pg p #TS3/2 0.1 -#WL/2-(#i+1)*#WL+#WL/2+1 0
+            poin auto type pg p #TS3/2 0.1 -#WL/2-(#i+1)*#WL+#WL/2-1 0
+        endloop
+    endif
+endif
+
+
+end
+
+
+
++prog ase urs:10.4
+head all LC
+
+Lc no all
+end
+
++prog maxima urs:10.6
+head define combinations
+comb 1 desi
+
+    act G
+    act L_U
+    act L_T
+
+comb 2 rare
+
+    act G
+    act L_U
+    act L_T
+
+comb 3 freq
+
+    act G
+    act L_U
+    act L_T
+
+comb 4 perm
+
+    act G
+    act L_U
+    act L_T
+end
++prog maxima urs:10.7
+head perform superposition
+supp ETYP type LC From Titl Extr=mami comb=1
+'beam' my 100
+
+supp ETYP type LC From Titl Extr=mami comb=2
+'beam' my 200
+
+supp ETYP type LC From Titl Extr=mami comb=3
+'beam' my 300
+
+supp ETYP type LC From Titl Extr=mami comb=4
+'beam' my 400
+end
+
+
+Prog aqb urs:6
+Head
+Lc 100
+Stre k
+End

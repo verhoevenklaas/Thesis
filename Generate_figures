@@ -1,0 +1,35 @@
+import pandas as pd
+from Functions_k import *
+from openpyxl import load_workbook
+
+wb1 = load_workbook(r'C:\Users\verho\OneDrive\Current semester\Thesis\Python\excel_files\profiles_L30_B12.xlsx')
+wb2 = load_workbook(r'C:\Users\verho\OneDrive\Current semester\Thesis\Python\excel_files\profiles_L30_B20.xlsx')
+wb3 = load_workbook(r'C:\Users\verho\OneDrive\Current semester\Thesis\Python\excel_files\profiles_L20_B12.xlsx')
+wb4 = load_workbook(r'C:\Users\verho\OneDrive\Current semester\Thesis\Python\excel_files\profiles_L50_B12.xlsx')
+ws1 = wb1.active  # or wb['Sheet1']
+ws2 = wb2.active  # or wb['Sheet1']
+ws3 = wb3.active  # or wb['Sheet1']
+ws4 = wb4.active  # or wb['Sheet1']
+
+# Extract values into a list of lists
+matrix1 = [[cell.value for cell in row] for row in ws1.iter_rows()]
+matrix2 = [[cell.value for cell in row] for row in ws2.iter_rows()]
+matrix3 = [[cell.value for cell in row] for row in ws3.iter_rows()]
+matrix4 = [[cell.value for cell in row] for row in ws4.iter_rows()]
+
+filter1 = 'metalizing'
+filter2 = 'construction steel S355'
+
+#plot_filtered_samples(matrix,filter2)
+#plot_filtered_samples2(matrix,filter1,filter2)
+
+#
+
+plot_filtered_sampleszl(matrix1)
+plot_filtered_sampleszl(matrix2)
+plot_filtered_sampleszl(matrix3)
+plot_filtered_sampleszl(matrix4)
+
+#plot_filtered_samples4(matrix1)
+
+#plot_filtered_samplescoat(matrix1)
